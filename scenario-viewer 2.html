@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Scenario Viewer — KP Companion</title>
+<style>
+  :root{
+    --bg:#faf6ec;
+    --paper:#fffdf7;
+    --ink:#2b2620;
+    --ink-soft:#6b6255;
+    --gold:#b8862f;
+    --gold-line:#d9c290;
+    --kp-bg:#efe8d6;
+    --kp-border:#a8956a;
+    --kp-text:#453a24;
+    --npc-bg:#f7ecd3;
+    --npc-border:#c9a24a;
+    --success-bg:#fbe6e2;
+    --success-text:#a1392b;
+    --success-border:#dd9a8b;
+    --failure-bg:#e2ebf9;
+    --failure-text:#2c4d7d;
+    --failure-border:#9db8dd;
+    --info-bg:#ece9e2;
+    --info-text:#57534b;
+    --info-border:#c7c0b2;
+    --scene-bg:#ece4f7;
+    --scene-text:#5b3f8c;
+    --scene-border:#b39cdb;
+    --rpok-bg:#e2f3ee;
+    --rpok-text:#1f6f5c;
+    --rpok-border:#7fbfae;
+    --danger:#a4453a;
+    --radius:14px;
+    font-size:16px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+    overscroll-behavior-y:none;
+  }
+  #app{display:flex; flex-direction:column; min-height:100vh;}
+  #layout{display:flex; min-height:100vh; width:100%;}
+  #mainCol{display:flex; flex-direction:column; flex:1; min-width:0;}
+
+  /* ---------- TOC (目次) ---------- */
+  #tocBackdrop{
+    position:fixed; inset:0; background:rgba(43,38,32,.4); z-index:39;
+    opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  #tocBackdrop.show{opacity:1; pointer-events:auto;}
+  #tocPanel{
+    position:fixed; top:0; bottom:0; left:0; width:82vw; max-width:300px;
+    background:var(--paper); border-right:1px solid var(--gold-line);
+    z-index:40; transform:translateX(-100%); transition:transform .22s ease;
+    display:flex; flex-direction:column;
+    padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
+  }
+  #tocPanel.open{transform:translateX(0);}
+  #tocPanel .toc-head{
+    padding:16px 16px 12px; border-bottom:1px solid var(--gold-line);
+    font-size:11.5px; font-weight:800; color:var(--gold); letter-spacing:.04em;
+  }
+  .toc-search-input{
+    margin:10px 12px 4px; width:calc(100% - 24px); border:1px solid var(--gold-line);
+    border-radius:8px; padding:8px 10px; font-size:13px; background:#fffef9; color:var(--ink);
+    font-family:inherit;
+  }
+  #tocPanel .toc-list{flex:1; overflow-y:auto; padding:8px;}
+  #tocPanel .toc-item{
+    display:block; width:100%; text-align:left; background:none; border:none;
+    padding:11px 10px; font-size:14px; color:var(--ink); border-radius:8px; cursor:pointer;
+    border-left:3px solid transparent;
+  }
+  #tocPanel .toc-item:active{background:#f2ecdc;}
+  #tocPanel .toc-item.is-doc{font-weight:700; color:var(--gold-line); font-size:12px; padding-top:14px; cursor:default;}
+  #tocPanel .toc-major-row{display:flex; align-items:stretch; gap:0;}
+  #tocPanel .toc-major-row .toc-item.toc-major{font-weight:700; flex:1; padding-left:4px;}
+  #tocPanel .toc-toggle{
+    flex:0 0 auto; width:24px; border:none; background:none; color:var(--ink-soft);
+    font-size:10px; cursor:pointer; padding:11px 0;
+  }
+  #tocPanel .toc-children{padding-left:6px;}
+  #tocPanel .toc-item.toc-child{
+    padding-left:34px; font-size:13px; color:var(--ink-soft); font-weight:400;
+  }
+  #tocPanel .toc-item.toc-child .toc-info-pill{
+    display:inline-block; background:var(--info-bg); color:var(--info-text);
+    padding:3px 10px; border-radius:999px; font-weight:600;
+  }
+  #tocPanel .toc-no-match{padding:16px 14px; font-size:12.5px; color:var(--ink-soft); line-height:1.7;}
+  #tocPanel .toc-empty{padding:20px 14px; font-size:12.5px; color:var(--ink-soft); line-height:1.7;}
+  #tocPanel .toc-close{
+    display:none; border:none; background:none; font-size:20px; color:var(--ink-soft);
+    position:absolute; right:8px; top:10px; padding:6px; cursor:pointer;
+  }
+  #tocToggleBtn{display:none;}
+
+  #tocPanel{display:none;}
+  #layout.has-toc #tocPanel{display:flex;}
+
+  @media (min-width:820px){
+    #tocBackdrop{display:none;}
+    #layout.has-toc #tocPanel{
+      position:sticky; top:0; height:100vh; transform:none; width:250px; min-width:250px;
+      border-right:1px solid var(--gold-line); display:flex;
+    }
+    #tocToggleBtn{display:none !important;}
+  }
+
+  header{
+    display:flex; align-items:center; gap:12px;
+    padding:14px 16px;
+    background:var(--paper);
+    border-bottom:1px solid var(--gold-line);
+    position:sticky; top:0; z-index:20;
+  }
+  header .back-btn{
+    border:none; background:none; font-size:22px; color:var(--gold);
+    padding:4px 8px; cursor:pointer; line-height:1;
+  }
+  header h1{
+    font-size:17px; margin:0; font-weight:700; flex:1;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  header h1.brand{
+    font-size:13px; font-weight:600; letter-spacing:.14em; color:var(--ink);
+    text-transform:uppercase; font-family:-apple-system,"Helvetica Neue",Arial,sans-serif;
+  }
+  header .sub{font-size:11px; color:var(--ink-soft); font-weight:400; display:block; margin-top:2px;}
+  header .header-actions{display:flex; gap:6px;}
+  header button.icon-btn{
+    border:1px solid var(--gold-line); background:var(--paper); color:var(--gold);
+    border-radius:10px; padding:8px 10px; font-size:13px; cursor:pointer;
+  }
+
+  main{flex:1; padding:16px; max-width:760px; width:100%; margin:0 auto; padding-bottom:48px;}
+  #layout.has-toc main{max-width:640px;}
+
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  /* ---------- HOME (Nordic minimal) ---------- */
+  .home-search-wrap{position:relative; margin-bottom:26px;}
+  .home-search-icon{
+    position:absolute; left:2px; top:50%; transform:translateY(-50%);
+    width:15px; height:15px; color:var(--ink-soft); pointer-events:none;
+  }
+  .home-search-input{
+    width:100%; border:none; border-bottom:1px solid #e3dac2; border-radius:0; padding:9px 4px 9px 24px;
+    font-size:14px; background:none; color:var(--ink); font-family:inherit;
+  }
+  .home-search-input:focus{outline:none; border-bottom-color:var(--ink-soft);}
+
+  .home-list-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:4px; padding:0 2px;
+  }
+  .home-list-label{
+    font-size:11px; font-weight:600; letter-spacing:.12em; color:var(--ink-soft); text-transform:uppercase;
+  }
+  .home-list-count{font-size:11px; color:var(--ink-soft);}
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-soft); line-height:1.8;
+  }
+  .doc-card{
+    background:none; border:none; border-bottom:1px solid #ece4d3; border-radius:0;
+    padding:18px 2px; margin-bottom:0; display:flex; align-items:center; gap:14px;
+    box-shadow:none;
+  }
+  .doc-card .doc-main{flex:1; min-width:0;}
+  .doc-card h3{margin:0 0 4px; font-size:15px; font-weight:600; color:var(--ink);}
+  .doc-card .doc-meta-pill{
+    display:inline-block; font-size:11.5px; color:var(--ink-soft); background:none;
+    border-radius:0; padding:0;
+  }
+  .doc-card .doc-actions{display:flex; align-items:center; gap:2px; flex-shrink:0;}
+  .doc-card button{
+    border:none; border-radius:8px; padding:8px 11px; font-size:12.5px; cursor:pointer; font-weight:500;
+    background:none;
+  }
+  .btn-open{color:var(--gold); font-weight:700;}
+  .btn-edit{color:var(--ink-soft);}
+  .btn-del{color:var(--ink-soft); font-size:16px; padding:8px; font-weight:400;}
+  .btn-del:active{color:var(--danger);}
+
+  .home-actions{margin-top:28px;}
+  .home-secondary-actions{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    margin-top:14px; font-size:12.5px;
+  }
+  .link-btn{
+    border:none; background:none; color:var(--ink-soft); font-size:12.5px; cursor:pointer;
+    padding:6px 4px; text-decoration:underline; text-underline-offset:2px;
+  }
+  .dot-sep{color:var(--gold-line);}
+
+  .fab-row{display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;}
+  .btn-main{
+    flex:1; min-width:150px;
+    background:var(--gold); color:#fff; border:none; border-radius:var(--radius);
+    padding:16px; font-size:15px; font-weight:700; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn-ghost{
+    flex:1; min-width:150px;
+    background:var(--paper); color:var(--gold); border:1.5px solid var(--gold-line); border-radius:var(--radius);
+    padding:16px; font-size:15px; font-weight:700; cursor:pointer;
+  }
+
+  /* ---------- IMPORT ---------- */
+  .tabbar{display:flex; gap:8px; margin-bottom:16px;}
+  .tabbar button{
+    flex:1; padding:11px; border-radius:10px; border:1px solid var(--gold-line);
+    background:var(--paper); color:var(--ink-soft); font-size:14px; cursor:pointer; font-weight:600;
+  }
+  .tabbar button.active{background:var(--gold); color:#fff; border-color:var(--gold);}
+  .import-pane{display:none;}
+  .import-pane.active{display:block;}
+  .drop-zone{
+    border:2px dashed var(--gold-line); border-radius:var(--radius);
+    padding:36px 16px; text-align:center; color:var(--ink-soft); background:var(--paper);
+  }
+  .drop-zone input{display:none;}
+  .drop-zone label{
+    display:inline-block; margin-top:10px; background:var(--gold); color:#fff;
+    padding:10px 18px; border-radius:10px; font-size:14px; cursor:pointer; font-weight:600;
+  }
+  #pdfFileName{font-size:13px; margin-top:10px; color:var(--gold);}
+  textarea{
+    width:100%; min-height:220px; border:1px solid var(--gold-line); border-radius:12px;
+    padding:14px; font-size:14.5px; font-family:inherit; background:var(--paper); color:var(--ink);
+    resize:vertical; line-height:1.7;
+  }
+  input[type=text]{
+    width:100%; border:1px solid var(--gold-line); border-radius:10px; padding:12px 14px;
+    font-size:15px; background:var(--paper); color:var(--ink); font-family:inherit;
+  }
+  label.field-label{font-size:12.5px; color:var(--ink-soft); font-weight:700; display:block; margin:16px 0 6px;}
+
+  /* ---------- EDITOR ---------- */
+  .block-editor{
+    background:var(--paper); border:1px solid var(--gold-line); border-radius:var(--radius);
+    padding:14px; margin-bottom:12px;
+  }
+  .block-editor .type-row{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .block-editor .block-title-input{
+    width:100%; border:1px solid var(--gold-line); border-radius:8px; padding:9px 11px;
+    font-size:13px; background:#fffef9; color:var(--gold); font-weight:700;
+    margin-bottom:10px; font-family:inherit;
+  }
+  .block-editor .block-title-input::placeholder{color:#c9b98a; font-weight:400;}
+  .rpok-hint{
+    font-size:11.5px; color:var(--rpok-text); background:var(--rpok-bg); border:1px solid var(--rpok-border);
+    border-radius:8px; padding:8px 10px; margin-bottom:10px; line-height:1.6;
+  }
+  .type-btn{
+    border:1px solid var(--gold-line); background:#fff; color:var(--ink-soft);
+    border-radius:8px; padding:7px 11px; font-size:12.5px; cursor:pointer; font-weight:600;
+  }
+  .type-btn[data-t="text"].sel{background:#efe9dc; color:var(--ink); border-color:#c9c0a8;}
+  .type-btn[data-t="heading"].sel{background:#f0e2ba; color:#7a5a15; border-color:var(--gold);}
+  .type-btn[data-t="kp"].sel{background:var(--kp-bg); color:var(--kp-text); border-color:var(--kp-border);}
+  .type-btn[data-t="npc"].sel{background:var(--npc-bg); color:#7a5a15; border-color:var(--npc-border);}
+  .type-btn[data-t="success"].sel{background:var(--success-bg); color:var(--success-text); border-color:var(--success-border);}
+  .type-btn[data-t="failure"].sel{background:var(--failure-bg); color:var(--failure-text); border-color:var(--failure-border);}
+  .type-btn[data-t="info"].sel{background:var(--info-bg); color:var(--info-text); border-color:var(--info-border);}
+  .type-btn[data-t="scene"].sel{background:var(--scene-bg); color:var(--scene-text); border-color:var(--scene-border);}
+  .type-btn[data-t="rpok"].sel{background:var(--rpok-bg); color:var(--rpok-text); border-color:var(--rpok-border);}
+  .block-editor .npc-name-row{margin-bottom:10px;}
+  .npc-roster-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .npc-chip{
+    border:1.5px solid; border-radius:999px; background:#fff; padding:5px 12px;
+    font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  .npc-chip.sel{color:#fff !important;}
+  .npc-chip:active{opacity:.75;}
+  .text-color-row{display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
+  .text-color-label{
+    display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-soft); font-weight:600;
+  }
+  .text-color-input{
+    width:34px; height:28px; border:1px solid var(--gold-line); border-radius:6px;
+    padding:0; background:none; cursor:pointer;
+  }
+  .text-color-hint{font-size:11px; color:var(--ink-soft); opacity:.8;}
+  .text-color-reset{
+    border:none; background:none; color:var(--gold); font-size:12px; cursor:pointer;
+    text-decoration:underline; padding:4px 0;
+  }
+  .block-editor textarea{min-height:80px; font-size:14px; overflow:hidden; resize:none;}
+  .block-editor .row-actions{display:flex; justify-content:space-between; margin-top:8px;}
+  .row-actions button{
+    border:none; background:none; font-size:12.5px; cursor:pointer; padding:4px 8px;
+  }
+  .row-actions .add-below{color:var(--gold); font-weight:700;}
+  .row-actions .del-block{color:var(--danger);}
+  .add-block-btn{
+    width:100%; padding:14px; border:1.5px dashed var(--gold-line); background:none;
+    border-radius:var(--radius); color:var(--gold); font-size:14px; font-weight:700; cursor:pointer; margin-bottom:16px;
+  }
+  .editor-footer{
+    position:sticky; bottom:0; background:var(--bg); padding:12px 0 6px;
+    display:flex; gap:10px; margin-top:6px;
+  }
+
+  /* ---------- VIEWER ---------- */
+  .v-title{
+    font-size:22px; font-weight:800; margin:4px 0 4px; letter-spacing:.02em;
+  }
+  .v-rule{height:3px; width:46px; background:var(--gold); border-radius:2px; margin-bottom:22px;}
+
+  .block{margin-bottom:18px; position:relative; scroll-margin-top:70px;}
+  .block-title-label{
+    font-size:11.5px; font-weight:800; color:var(--gold); letter-spacing:.03em;
+    margin-bottom:5px; padding-left:2px; user-select:none;
+  }
+  .block-title-label.major-title{
+    font-size:20px; font-weight:800; color:var(--ink); letter-spacing:.02em;
+    padding-bottom:8px; margin:14px 0 10px; border-bottom:2px solid var(--gold);
+  }
+  .block-editor{scroll-margin-top:70px;}
+
+  .b-text{
+    background:var(--paper); border:1px solid #ece4d0; border-radius:12px;
+    padding:14px 16px; font-size:15.5px; line-height:1.9; cursor:pointer;
+    transition:background .15s; white-space:pre-wrap;
+  }
+  .b-text:active{background:#f2ecdc;}
+
+  .b-kp{
+    background:var(--kp-bg); border-left:4px solid var(--kp-border); border-radius:0 12px 12px 0;
+    padding:14px 16px 14px 14px; font-size:14.5px; line-height:1.85; color:var(--kp-text);
+    position:relative; cursor:default; opacity:.96; white-space:pre-wrap;
+  }
+  .b-kp .kp-tag{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:11.5px; font-weight:800; color:var(--kp-border); margin-bottom:6px;
+  }
+  .b-kp .kp-tag .lock{font-size:12px;}
+
+  .b-status{
+    padding:14px 16px; border-radius:0 12px 12px 0; font-size:15px; line-height:1.85;
+    cursor:pointer; white-space:pre-wrap; border-left:4px solid transparent; transition:opacity .15s;
+  }
+  .b-status:active{opacity:.8;}
+  .b-status.success{background:var(--success-bg); color:var(--success-text); border-left-color:var(--success-border);}
+  .b-status.failure{background:var(--failure-bg); color:var(--failure-text); border-left-color:var(--failure-border);}
+  .b-status.info{background:var(--info-bg); color:var(--info-text); border-left-color:var(--info-border);}
+  .b-status.scene{background:var(--scene-bg); color:var(--scene-text); border-left-color:var(--scene-border);}
+
+  .b-rpok{
+    background:var(--rpok-bg); border:1px solid var(--rpok-border); border-radius:14px;
+    padding:26px 16px; text-align:center; cursor:pointer; min-height:64px;
+    display:flex; align-items:center; justify-content:center; transition:background .15s;
+  }
+  .b-rpok .rpok-label{
+    color:var(--rpok-text); font-weight:800; font-size:18px; letter-spacing:.06em;
+  }
+  .b-rpok.revealed{background:var(--rpok-text);}
+  .b-rpok.revealed .rpok-label{color:#fff; font-size:22px; font-weight:800; letter-spacing:.05em;}
+  .b-rpok:active{opacity:.85;}
+
+  .b-npc{display:flex; flex-direction:column; align-items:flex-start;}
+  .b-npc .npc-name{
+    display:inline-block; background:var(--npc-border); color:#fff; font-weight:700;
+    font-size:12.5px; padding:5px 12px; border-radius:8px 8px 0 0; margin-left:6px;
+  }
+  .b-npc .npc-bubble{
+    position:relative; background:var(--npc-bg); border:1px solid var(--npc-border); border-radius:4px 16px 16px 16px;
+    padding:14px 16px; font-size:15.5px; line-height:1.85; cursor:pointer; width:100%;
+    transition:background .15s; white-space:pre-wrap; margin-bottom:8px;
+  }
+  .b-npc .npc-bubble:active{background:#f0e0b8;}
+  .b-npc .npc-tail{
+    position:absolute; left:18px; bottom:-7px; width:14px; height:14px;
+    background-color:inherit; border-right:1px solid var(--npc-border); border-bottom:1px solid var(--npc-border);
+    border-radius:0 0 3px 0; transform:rotate(45deg); pointer-events:none;
+  }
+
+  .copy-flash{
+    animation:flash .5s ease;
+  }
+  @keyframes flash{
+    0%{box-shadow:0 0 0 3px rgba(184,134,47,.55);}
+    100%{box-shadow:0 0 0 0 rgba(184,134,47,0);}
+  }
+
+  #toast{
+    position:fixed; left:50%; bottom:34px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#fff; padding:11px 20px; border-radius:30px;
+    font-size:13.5px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+    z-index:100; white-space:nowrap;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* ---------- CONFIRM MODAL (in-app, doesn't rely on the browser's native confirm()) ---------- */
+  .confirm-overlay{
+    position:fixed; inset:0; background:rgba(43,38,32,.45); z-index:300;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .confirm-overlay.hidden{display:none;}
+  .confirm-box{
+    background:var(--paper); border:1px solid var(--gold-line); border-radius:16px;
+    padding:24px 20px; width:100%; max-width:320px; text-align:center;
+  }
+  .confirm-box p{margin:0 0 18px; font-size:14.5px; color:var(--ink); line-height:1.7;}
+  .confirm-actions{display:flex; gap:10px;}
+  .confirm-actions button{
+    flex:1; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .confirm-cancel{background:#f0ead9; color:var(--ink);}
+  .confirm-ok{background:var(--danger); color:#fff;}
+
+  .theme-picker{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px;}
+  .theme-btn{width:auto; flex:0 0 auto; padding:11px 16px; font-size:13px;}
+  .theme-swatches{display:flex; gap:6px; align-items:center;}
+  .theme-swatch{width:22px; height:22px; border-radius:6px; border:1px solid rgba(0,0,0,.15);}
+
+  @media (min-width:640px){
+    main{padding:28px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+<div id="layout">
+
+  <div id="tocBackdrop"></div>
+  <aside id="tocPanel">
+    <div class="toc-head">目次</div>
+    <input type="text" id="tocSearchInput" class="toc-search-input" placeholder="タイトルで検索">
+    <div class="toc-list" id="tocList"></div>
+  </aside>
+
+  <div id="mainCol">
+
+  <header>
+    <button class="back-btn" id="backBtn" style="visibility:hidden">‹</button>
+    <button class="icon-btn" id="tocToggleBtn">☰ 目次</button>
+    <div style="flex:1; min-width:0;">
+      <h1 id="headerTitle" class="brand">SCENARIO VIEWER</h1>
+      <span class="sub" id="headerSub">KP Companion</span>
+    </div>
+    <div class="header-actions" id="headerActions"></div>
+  </header>
+
+  <main>
+
+    <!-- HOME -->
+    <section class="screen active" id="screen-home">
+      <div class="home-search-wrap">
+        <svg class="home-search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.6"/>
+          <line x1="20" y1="20" x2="15.5" y2="15.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="homeSearchInput" class="home-search-input" placeholder="シナリオ名で検索">
+      </div>
+
+      <div class="home-list-head">
+        <span class="home-list-label">Saved</span>
+        <span class="home-list-count" id="homeCount">0</span>
+      </div>
+
+      <div id="docList"></div>
+
+      <div class="home-actions">
+        <button class="btn-main" id="newDocBtn">＋ 新しいシナリオを読み込む</button>
+        <div class="home-secondary-actions">
+          <button class="link-btn" id="importJsonBtn">JSONを読み込む</button>
+          <span class="dot-sep">・</span>
+          <button class="link-btn" id="exportJsonBtn">JSONを書き出す</button>
+        </div>
+      </div>
+      <input type="file" id="jsonFileInput" accept="application/json" style="display:none">
+    </section>
+
+    <!-- IMPORT -->
+    <section class="screen" id="screen-import">
+      <label class="field-label">シナリオ名</label>
+      <input type="text" id="newDocTitle" placeholder="例）メイフラワーの咲く森で">
+
+      <label class="field-label">読み込み方法</label>
+      <div class="tabbar">
+        <button class="tab-btn active" data-tab="pdf">PDFから読み込む</button>
+        <button class="tab-btn" data-tab="paste">テキストを貼り付け</button>
+      </div>
+
+      <div class="import-pane active" id="pane-pdf">
+        <div class="drop-zone">
+          <div>PDFファイルを選択してください</div>
+          <div style="font-size:12px; margin-top:4px;">端末内のPDFから文章を自動で抽出します</div>
+          <label for="pdfInput">ファイルを選ぶ</label>
+          <input type="file" id="pdfInput" accept="application/pdf">
+          <div id="pdfFileName"></div>
+          <div id="pdfStatus" style="font-size:12.5px; margin-top:8px; color:var(--ink-soft);"></div>
+        </div>
+      </div>
+
+      <div class="import-pane" id="pane-paste">
+        <textarea id="pasteText" placeholder="ここにシナリオ本文を貼り付けてください"></textarea>
+      </div>
+
+      <div class="fab-row">
+        <button class="btn-main" id="goToEditorBtn">段落に分けて編集へ進む</button>
+      </div>
+    </section>
+
+    <!-- EDITOR -->
+    <section class="screen" id="screen-editor">
+      <label class="field-label">シナリオ名</label>
+      <input type="text" id="editDocTitle" placeholder="シナリオ名">
+
+      <label class="field-label" style="margin-top:20px;">配色（このシナリオだけの色味）</label>
+      <div class="theme-picker">
+        <input type="file" id="themeImageInput" accept="image/*" style="display:none">
+        <button type="button" class="btn-ghost theme-btn" id="themeImageBtn">画像から配色を読み込む</button>
+        <button type="button" class="text-color-reset" id="themeResetBtn">既定の配色に戻す</button>
+        <div class="theme-swatches" id="themeSwatches"></div>
+      </div>
+
+      <label class="field-label" style="margin-top:20px;">本文ブロック</label>
+      <div id="blockList"></div>
+      <button class="add-block-btn" id="addBlockBtn">＋ 段落を追加</button>
+
+      <div class="editor-footer">
+        <button class="btn-main" id="saveDocBtn">保存してプレビュー</button>
+      </div>
+    </section>
+
+    <!-- VIEWER -->
+    <section class="screen" id="screen-viewer">
+      <div class="v-title" id="viewTitle"></div>
+      <div class="v-rule"></div>
+      <div id="viewBody"></div>
+    </section>
+
+  </main>
+
+  </div><!-- /mainCol -->
+  </div><!-- /layout -->
+
+  <div id="toast"></div>
+
+  <div id="confirmOverlay" class="confirm-overlay hidden">
+    <div class="confirm-box">
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button id="confirmCancelBtn" class="confirm-cancel">キャンセル</button>
+        <button id="confirmOkBtn" class="confirm-ok">削除する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---------- state ----------
+  var STORAGE_KEY = "scenarioViewerDocs_v1";
+  var documents = [];
+  var currentDocId = null;
+  var pendingRawText = "";
+  var pdfExtracted = "";
+  var cloudAvailable = !!(window.storage && typeof window.storage.get === "function");
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  // Every block type (info included) now uses the same manually-entered title field.
+  function getBlockTitle(b){
+    return (b.title && b.title.trim()) ? b.title.trim() : "";
+  }
+
+  // ---------- color helpers: pick a text color, derive a matching pastel background ----------
+  var DEFAULT_TEXT_COLORS = { text:"#2b2620", heading:"#2b2620", kp:"#453a24", npc:"#2b2620", success:"#a1392b", failure:"#2c4d7d", info:"#57534b", scene:"#5b3f8c" };
+
+  function hexToRgb(hex){
+    hex = (hex || "").replace("#", "");
+    if(hex.length===3){ hex = hex.split("").map(function(c){ return c+c; }).join(""); }
+    var num = parseInt(hex, 16);
+    return {r:(num>>16)&255, g:(num>>8)&255, b:num&255};
+  }
+  function rgbToHsl(r,g,b){
+    r/=255; g/=255; b/=255;
+    var max=Math.max(r,g,b), min=Math.min(r,g,b);
+    var h=0, s=0, l=(max+min)/2;
+    if(max!==min){
+      var d = max-min;
+      s = l>0.5 ? d/(2-max-min) : d/(max+min);
+      switch(max){
+        case r: h=(g-b)/d + (g<b?6:0); break;
+        case g: h=(b-r)/d + 2; break;
+        default: h=(r-g)/d + 4;
+      }
+      h/=6;
+    }
+    return {h:h*360, s:s*100, l:l*100};
+  }
+  function hslToRgb(h,s,l){
+    h/=360; s/=100; l/=100;
+    var r,g,b;
+    if(s===0){ r=g=b=l; }
+    else{
+      var hue2rgb = function(p,q,t){
+        if(t<0) t+=1;
+        if(t>1) t-=1;
+        if(t<1/6) return p+(q-p)*6*t;
+        if(t<1/2) return q;
+        if(t<2/3) return p+(q-p)*(2/3-t)*6;
+        return p;
+      };
+      var q = l<0.5 ? l*(1+s) : l+s-l*s;
+      var p = 2*l-q;
+      r = hue2rgb(p,q,h+1/3);
+      g = hue2rgb(p,q,h);
+      b = hue2rgb(p,q,h-1/3);
+    }
+    return {r:Math.round(r*255), g:Math.round(g*255), b:Math.round(b*255)};
+  }
+  function rgbToHex(r,g,b){
+    return "#" + [r,g,b].map(function(x){
+      var h = Math.max(0,Math.min(255,x)).toString(16);
+      return h.length===1 ? "0"+h : h;
+    }).join("");
+  }
+  // Given a chosen text color, derive a light, same-hue background so the text stays readable.
+  function deriveBgFromTextColor(hex){
+    try{
+      var rgb = hexToRgb(hex);
+      var hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+      var s = Math.min(Math.max(hsl.s, 32), 62);
+      var bgRgb = hslToRgb(hsl.h, s, 92);
+      return rgbToHex(bgRgb.r, bgRgb.g, bgRgb.b);
+    }catch(e){ return null; }
+  }
+
+  // ---------- per-scenario theme: derive a whole layout palette from an uploaded image ----------
+  var THEME_VAR_MAP = {
+    bg:"--bg", paper:"--paper", ink:"--ink", inkSoft:"--ink-soft", gold:"--gold", goldLine:"--gold-line",
+    kpBg:"--kp-bg", kpBorder:"--kp-border", kpText:"--kp-text",
+    npcBg:"--npc-bg", npcBorder:"--npc-border"
+  };
+
+  function applyTheme(theme){
+    var root = document.documentElement;
+    Object.keys(THEME_VAR_MAP).forEach(function(key){
+      var varName = THEME_VAR_MAP[key];
+      if(theme && theme[key]){ root.style.setProperty(varName, theme[key]); }
+      else { root.style.removeProperty(varName); }
+    });
+  }
+
+  function extractPaletteFromImageData(imgData){
+    var data = imgData.data;
+    var hueBuckets = new Array(36).fill(0);
+    var vivid = null, vividScore = -1;
+    var darkestHsl = null, darkestL = 101;
+
+    for(var i=0; i<data.length; i+=4){
+      var r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
+      if(a < 100) continue;
+      var hsl = rgbToHsl(r,g,b);
+      if(hsl.s > 15 && hsl.l > 10 && hsl.l < 90){
+        hueBuckets[Math.floor(hsl.h/10) % 36]++;
+      }
+      var score = hsl.s * (1 - Math.abs(hsl.l-50)/50);
+      if(score > vividScore){ vividScore = score; vivid = hsl; }
+      if(hsl.l < darkestL && hsl.l > 3){ darkestL = hsl.l; darkestHsl = hsl; }
+    }
+
+    var maxBucket = 0, maxCount = -1;
+    hueBuckets.forEach(function(c, idx){ if(c > maxCount){ maxCount = c; maxBucket = idx; } });
+    var dominantHue = (maxCount > 0) ? (maxBucket*10 + 5) : (vivid ? vivid.h : 40);
+
+    var accentHue = vivid ? vivid.h : dominantHue;
+    var accentS = vivid ? Math.max(vivid.s, 45) : 55;
+    var accentL = vivid ? Math.min(Math.max(vivid.l, 36), 52) : 45;
+    var goldRgb = hslToRgb(accentHue, accentS, accentL);
+
+    var goldLineRgb = hslToRgb(dominantHue, 40, 78);
+    var bgRgb = hslToRgb(dominantHue, 22, 95);
+    var paperRgb = hslToRgb(dominantHue, 15, 99);
+
+    var inkS = darkestHsl ? Math.min(darkestHsl.s, 30) : 20;
+    var inkL = darkestHsl ? Math.max(Math.min(darkestHsl.l, 24), 12) : 16;
+    var inkRgb = hslToRgb(dominantHue, inkS, inkL);
+    var inkSoftRgb = hslToRgb(dominantHue, 18, 42);
+
+    var kpBgRgb = hslToRgb(dominantHue, 24, 89);
+    var kpBorderRgb = hslToRgb(dominantHue, 38, 56);
+    var kpTextRgb = hslToRgb(dominantHue, 34, 23);
+    var npcBgRgb = hslToRgb(dominantHue, 44, 85);
+    var npcBorderRgb = hslToRgb(dominantHue, 46, 54);
+
+    return {
+      bg: rgbToHex(bgRgb.r, bgRgb.g, bgRgb.b),
+      paper: rgbToHex(paperRgb.r, paperRgb.g, paperRgb.b),
+      gold: rgbToHex(goldRgb.r, goldRgb.g, goldRgb.b),
+      goldLine: rgbToHex(goldLineRgb.r, goldLineRgb.g, goldLineRgb.b),
+      ink: rgbToHex(inkRgb.r, inkRgb.g, inkRgb.b),
+      inkSoft: rgbToHex(inkSoftRgb.r, inkSoftRgb.g, inkSoftRgb.b),
+      kpBg: rgbToHex(kpBgRgb.r, kpBgRgb.g, kpBgRgb.b),
+      kpBorder: rgbToHex(kpBorderRgb.r, kpBorderRgb.g, kpBorderRgb.b),
+      kpText: rgbToHex(kpTextRgb.r, kpTextRgb.g, kpTextRgb.b),
+      npcBg: rgbToHex(npcBgRgb.r, npcBgRgb.g, npcBgRgb.b),
+      npcBorder: rgbToHex(npcBorderRgb.r, npcBorderRgb.g, npcBorderRgb.b)
+    };
+  }
+
+  function extractPaletteFromImageFile(file, callback){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var w = 60, h = 60;
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          var imgData = ctx.getImageData(0, 0, w, h);
+          callback(extractPaletteFromImageData(imgData), null);
+        }catch(e){ callback(null, e); }
+      };
+      img.onerror = function(){ callback(null, new Error("image load failed")); };
+      img.src = reader.result;
+    };
+    reader.onerror = function(){ callback(null, new Error("file read failed")); };
+    reader.readAsDataURL(file);
+  }
+
+  function renderThemeSwatches(theme){
+    var wrap = document.getElementById("themeSwatches");
+    wrap.innerHTML = "";
+    if(!theme) return;
+    ["bg","paper","gold","ink"].forEach(function(key){
+      if(!theme[key]) return;
+      var sw = document.createElement("span");
+      sw.className = "theme-swatch";
+      sw.style.background = theme[key];
+      wrap.appendChild(sw);
+    });
+  }
+
+  async function storageGet(key){
+    if(cloudAvailable){
+      try{
+        var res = await window.storage.get(key, false);
+        return res ? res.value : null;
+      }catch(e){
+        try{ return localStorage.getItem(key); }catch(e2){ return null; }
+      }
+    }
+    try{ return localStorage.getItem(key); }catch(e){ return null; }
+  }
+  async function storageSet(key, value){
+    if(cloudAvailable){
+      try{ await window.storage.set(key, value, false); return; }
+      catch(e){ /* fall through to local */ }
+    }
+    try{ localStorage.setItem(key, value); }catch(e){}
+  }
+
+  function saveDocs(){
+    storageSet(STORAGE_KEY, JSON.stringify(documents));
+  }
+
+  // ---------- screen nav ----------
+  var screens = ["home","import","editor","viewer"];
+  var currentScreen = "home";
+  function showScreen(name, opts){
+    opts = opts || {};
+    currentScreen = name;
+    screens.forEach(function(s){
+      document.getElementById("screen-"+s).classList.toggle("active", s===name);
+    });
+    var backBtn = document.getElementById("backBtn");
+    var title = document.getElementById("headerTitle");
+    var sub = document.getElementById("headerSub");
+    var actions = document.getElementById("headerActions");
+    var layout = document.getElementById("layout");
+    var tocToggleBtn = document.getElementById("tocToggleBtn");
+    actions.innerHTML = "";
+    backBtn.style.visibility = (name==="home") ? "hidden" : "visible";
+
+    var showToc = (name==="editor" || name==="viewer");
+    layout.classList.toggle("has-toc", showToc);
+    tocToggleBtn.style.display = showToc ? "inline-block" : "none";
+    if(!showToc) closeToc();
+
+    var themeDoc = showToc ? getCurrentDoc() : null;
+    applyTheme(themeDoc ? themeDoc.theme : null);
+
+    if(name==="home"){
+      title.classList.add("brand");
+      title.textContent = "SCENARIO VIEWER";
+      sub.textContent = "KP Companion";
+    } else if(name==="import"){
+      title.classList.remove("brand");
+      title.textContent = "新しいシナリオ";
+      sub.textContent = "PDF / テキストから読み込み";
+    } else if(name==="editor"){
+      title.classList.remove("brand");
+      title.textContent = "編集";
+      sub.textContent = "段落の種類を振り分け";
+      var previewBtn = document.createElement("button");
+      previewBtn.className = "icon-btn";
+      previewBtn.textContent = "プレビュー";
+      previewBtn.onclick = function(){ saveAndPreview(); };
+      actions.appendChild(previewBtn);
+    } else if(name==="viewer"){
+      title.classList.remove("brand");
+      var d = getCurrentDoc();
+      title.textContent = d ? d.title : "";
+      sub.textContent = "タップでコピー";
+      var editBtn = document.createElement("button");
+      editBtn.className = "icon-btn";
+      editBtn.textContent = "編集";
+      editBtn.onclick = function(){ openEditor(currentDocId); };
+      actions.appendChild(editBtn);
+    }
+    renderToc();
+  }
+
+  // ---------- TOC (目次) ----------
+  var tocCollapsed = {}; // major block id -> true(collapsed)/false(expanded), kept for the session
+
+  function openToc(){
+    document.getElementById("tocPanel").classList.add("open");
+    document.getElementById("tocBackdrop").classList.add("show");
+  }
+  function closeToc(){
+    document.getElementById("tocPanel").classList.remove("open");
+    document.getElementById("tocBackdrop").classList.remove("show");
+  }
+  document.getElementById("tocToggleBtn").addEventListener("click", function(){
+    var panel = document.getElementById("tocPanel");
+    panel.classList.contains("open") ? closeToc() : openToc();
+  });
+  document.getElementById("tocBackdrop").addEventListener("click", closeToc);
+
+  function buildTocTree(doc){
+    var tree = [];
+    var currentMajor = null;
+    doc.blocks.forEach(function(b){
+      if(b.type==="heading"){
+        currentMajor = {
+          id: b.id,
+          label: getBlockTitle(b) || (b.text ? b.text.slice(0,40) : "（大段落）"),
+          type: b.type,
+          children: []
+        };
+        tree.push(currentMajor);
+      } else if(b.type !== "rpok"){
+        var childTitle = getBlockTitle(b);
+        if(childTitle){
+          var node = {id: b.id, label: childTitle, type: b.type};
+          if(currentMajor){
+            currentMajor.children.push(node);
+          } else {
+            tree.push({id: b.id, label: node.label, type: b.type, children: []});
+          }
+        }
+      }
+    });
+    return tree;
+  }
+
+  function renderToc(){
+    var list = document.getElementById("tocList");
+    list.innerHTML = "";
+    var doc = getCurrentDoc();
+    if(!doc || (currentScreen!=="editor" && currentScreen!=="viewer")){
+      return;
+    }
+    var docLabel = document.createElement("div");
+    docLabel.className = "toc-item is-doc";
+    docLabel.textContent = doc.title || "無題のシナリオ";
+    list.appendChild(docLabel);
+
+    var tree = buildTocTree(doc);
+    if(tree.length===0){
+      var empty = document.createElement("div");
+      empty.className = "toc-empty";
+      empty.textContent = "大段落がまだありません。編集画面で段落を「大段落」に設定すると、ここに一覧（フォルダ）として格納されます。段落にタイトルを付けると、その大段落の中にしまわれます。";
+      list.appendChild(empty);
+      return;
+    }
+
+    var query = (document.getElementById("tocSearchInput").value || "").trim().toLowerCase();
+    var visibleTree = tree;
+    if(query){
+      visibleTree = tree.map(function(major){
+        var majorMatches = major.label.toLowerCase().indexOf(query) !== -1;
+        var matchingChildren = major.children.filter(function(c){
+          return c.label.toLowerCase().indexOf(query) !== -1;
+        });
+        if(majorMatches || matchingChildren.length){
+          return {
+            id: major.id, label: major.label, type: major.type,
+            children: majorMatches ? major.children : matchingChildren
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+      if(visibleTree.length===0){
+        var noMatch = document.createElement("div");
+        noMatch.className = "toc-no-match";
+        noMatch.textContent = "「" + query + "」に一致するタイトルがありません";
+        list.appendChild(noMatch);
+        return;
+      }
+    }
+
+    var prefix = (currentScreen==="viewer") ? "vb-" : "eb-";
+
+    function jumpTo(id){
+      var target = document.getElementById(prefix+id);
+      if(target){
+        target.scrollIntoView({behavior:"smooth", block:"start"});
+        target.classList.add("copy-flash");
+        setTimeout(function(){ target.classList.remove("copy-flash"); }, 700);
+      }
+      closeToc();
+    }
+
+    visibleTree.forEach(function(major){
+      var hasChildren = major.children.length > 0;
+      if(tocCollapsed[major.id] === undefined) tocCollapsed[major.id] = false; // expanded by default
+      var forceOpen = !!query; // search results should always show their matches
+
+      var row = document.createElement("div");
+      row.className = "toc-major-row";
+
+      var toggle = document.createElement("button");
+      toggle.className = "toc-toggle";
+      toggle.textContent = hasChildren ? ((tocCollapsed[major.id] && !forceOpen) ? "▶" : "▼") : "";
+      toggle.setAttribute("aria-label", "この大段落の一覧を開閉");
+      row.appendChild(toggle);
+
+      var item = document.createElement("button");
+      item.className = "toc-item toc-major";
+      if(major.type === "info"){
+        var majorPill = document.createElement("span");
+        majorPill.className = "toc-info-pill";
+        majorPill.textContent = major.label;
+        item.appendChild(majorPill);
+      } else {
+        item.textContent = major.label;
+      }
+      item.addEventListener("click", function(){ jumpTo(major.id); });
+      row.appendChild(item);
+
+      list.appendChild(row);
+
+      var childrenWrap = document.createElement("div");
+      childrenWrap.className = "toc-children";
+      childrenWrap.style.display = (hasChildren && (forceOpen || !tocCollapsed[major.id])) ? "block" : "none";
+
+      major.children.forEach(function(child){
+        var childItem = document.createElement("button");
+        childItem.className = "toc-item toc-child";
+        if(child.type === "info"){
+          var pill = document.createElement("span");
+          pill.className = "toc-info-pill";
+          pill.textContent = child.label;
+          childItem.appendChild(pill);
+        } else {
+          childItem.textContent = "- " + child.label;
+        }
+        childItem.addEventListener("click", function(){ jumpTo(child.id); });
+        childrenWrap.appendChild(childItem);
+      });
+      list.appendChild(childrenWrap);
+
+      if(hasChildren && !forceOpen){
+        toggle.addEventListener("click", function(){
+          tocCollapsed[major.id] = !tocCollapsed[major.id];
+          renderToc();
+        });
+      }
+    });
+  }
+
+  document.getElementById("tocSearchInput").addEventListener("input", renderToc);
+
+  document.getElementById("backBtn").addEventListener("click", function(){
+    var active = screens.find(function(s){ return document.getElementById("screen-"+s).classList.contains("active"); });
+    if(active==="import") showScreen("home");
+    else if(active==="editor") showScreen(currentDocId ? "viewer" : "import");
+    else if(active==="viewer") showScreen("home");
+    renderHome();
+  });
+
+  // ---------- toast ----------
+  var toastTimer;
+  function toast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 1400);
+  }
+
+  // ---------- confirm modal (in-app; the browser's native confirm() is blocked
+  // inside this preview environment, so deletions use this instead) ----------
+  function showConfirm(message, okLabel, onConfirm){
+    var overlay = document.getElementById("confirmOverlay");
+    var msgEl = document.getElementById("confirmMessage");
+    var okBtn = document.getElementById("confirmOkBtn");
+    var cancelBtn = document.getElementById("confirmCancelBtn");
+    msgEl.textContent = message;
+    okBtn.textContent = okLabel || "削除する";
+    overlay.classList.remove("hidden");
+
+    function cleanup(){
+      overlay.classList.add("hidden");
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+    }
+    function onOk(){ cleanup(); onConfirm(); }
+    function onCancel(){ cleanup(); }
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+  }
+
+  function copyText(str, el){
+    function done(ok){
+      if(ok){
+        toast("コピーしました");
+        if(el){ el.classList.add("copy-flash"); setTimeout(function(){el.classList.remove("copy-flash");},500); }
+      } else {
+        toast("コピーできませんでした");
+      }
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(str).then(function(){done(true);}).catch(function(){ fallbackCopy(str, done); });
+    } else {
+      fallbackCopy(str, done);
+    }
+  }
+  function fallbackCopy(str, cb){
+    try{
+      var ta = document.createElement("textarea");
+      ta.value = str;
+      ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      var ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      cb(ok);
+    }catch(e){ cb(false); }
+  }
+
+  // ---------- HOME ----------
+  function renderHome(){
+    var list = document.getElementById("docList");
+    list.innerHTML = "";
+    var query = (document.getElementById("homeSearchInput").value || "").trim().toLowerCase();
+    var filtered = query
+      ? documents.filter(function(d){ return (d.title || "").toLowerCase().indexOf(query) !== -1; })
+      : documents;
+
+    if(documents.length===0){
+      list.innerHTML = '<div class="empty-state">まだシナリオがありません<br>PDFかテキストを読み込んで作成しましょう</div>';
+    } else if(filtered.length===0){
+      var noMatch = document.createElement("div");
+      noMatch.className = "empty-state";
+      noMatch.textContent = "「" + query + "」に一致するシナリオがありません";
+      list.appendChild(noMatch);
+    } else {
+      var reversed = filtered.slice().reverse();
+      reversed.forEach(function(d, idx){
+        var card = document.createElement("div");
+        card.className = "doc-card";
+        card.innerHTML =
+          '<div class="doc-main"><h3></h3><span class="doc-meta-pill"></span></div>' +
+          '<div class="doc-actions">' +
+            '<button class="btn-open">開く</button>' +
+            '<button class="btn-edit">編集</button>' +
+            '<button class="btn-del">×</button>' +
+          '</div>';
+        card.querySelector("h3").textContent = d.title || "無題のシナリオ";
+        card.querySelector(".doc-meta-pill").textContent = (d.blocks?d.blocks.length:0) + "段落";
+        card.querySelector(".btn-open").onclick = function(){ openViewer(d.id); };
+        card.querySelector(".btn-edit").onclick = function(){ openEditor(d.id); };
+        card.querySelector(".btn-del").onclick = function(){
+          showConfirm('「'+(d.title||"無題")+'」を削除しますか？この操作は取り消せません。', "削除する", function(){
+            documents = documents.filter(function(x){return x.id!==d.id;});
+            saveDocs(); renderHome();
+            toast("削除しました");
+          });
+        };
+        list.appendChild(card);
+      });
+    }
+    document.getElementById("homeCount").textContent = documents.length;
+  }
+
+  document.getElementById("homeSearchInput").addEventListener("input", renderHome);
+
+  document.getElementById("newDocBtn").addEventListener("click", function(){
+    document.getElementById("newDocTitle").value = "";
+    document.getElementById("pasteText").value = "";
+    document.getElementById("pdfFileName").textContent = "";
+    document.getElementById("pdfStatus").textContent = "";
+    pdfExtracted = "";
+    document.getElementById("pdfInput").value = "";
+    switchTab("pdf");
+    showScreen("import");
+  });
+
+  // JSON import/export
+  document.getElementById("importJsonBtn").addEventListener("click", function(){
+    document.getElementById("jsonFileInput").click();
+  });
+  document.getElementById("jsonFileInput").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var data = JSON.parse(reader.result);
+        var arr = Array.isArray(data) ? data : [data];
+        arr.forEach(function(d){
+          d.id = uid();
+          documents.push(d);
+        });
+        saveDocs(); renderHome(); showScreen("home");
+        toast("読み込みました");
+      }catch(err){ toast("JSONの読み込みに失敗しました"); }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("exportJsonBtn").addEventListener("click", function(){
+    if(documents.length===0){ toast("書き出せるシナリオがありません"); return; }
+    try{
+      var payload = JSON.stringify(documents, null, 2);
+      var blob = new Blob([payload], {type:"application/json"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      var stamp = new Date().toISOString().slice(0,10);
+      a.download = "scenario-viewer-" + stamp + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      toast("JSONを書き出しました");
+    }catch(err){
+      toast("書き出しに失敗しました");
+    }
+  });
+
+  // ---------- IMPORT ----------
+  function switchTab(name){
+    document.querySelectorAll(".tab-btn").forEach(function(b){
+      b.classList.toggle("active", b.dataset.tab===name);
+    });
+    document.getElementById("pane-pdf").classList.toggle("active", name==="pdf");
+    document.getElementById("pane-paste").classList.toggle("active", name==="paste");
+  }
+  document.querySelectorAll(".tab-btn").forEach(function(b){
+    b.addEventListener("click", function(){ switchTab(b.dataset.tab); });
+  });
+
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+
+  document.getElementById("pdfInput").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    document.getElementById("pdfFileName").textContent = file.name;
+    document.getElementById("pdfStatus").textContent = "抽出中…";
+    if(!document.getElementById("newDocTitle").value){
+      document.getElementById("newDocTitle").value = file.name.replace(/\.pdf$/i,"");
+    }
+    var reader = new FileReader();
+    reader.onload = function(){
+      var typedArray = new Uint8Array(reader.result);
+      pdfjsLib.getDocument({data: typedArray}).promise.then(function(pdf){
+        var pages = [];
+        var chain = Promise.resolve();
+        for(var i=1;i<=pdf.numPages;i++){
+          (function(pageNum){
+            chain = chain.then(function(){
+              return pdf.getPage(pageNum).then(function(page){
+                return page.getTextContent().then(function(content){
+                  var line = "";
+                  var lastY = null;
+                  var out = [];
+                  content.items.forEach(function(item){
+                    var y = item.transform[5];
+                    if(lastY!==null && Math.abs(y-lastY)>2){
+                      out.push(line);
+                      line = "";
+                    }
+                    line += item.str;
+                    lastY = y;
+                  });
+                  if(line) out.push(line);
+                  pages[pageNum-1] = out.join("\n");
+                });
+              });
+            });
+          })(i);
+        }
+        chain.then(function(){
+          pdfExtracted = pages.join("\n\n");
+          document.getElementById("pdfStatus").textContent = "抽出完了（" + pdf.numPages + "ページ）";
+        }).catch(function(err){
+          document.getElementById("pdfStatus").textContent = "抽出に失敗しました: " + err.message;
+        });
+      }).catch(function(err){
+        document.getElementById("pdfStatus").textContent = "PDFの読み込みに失敗しました";
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // ---------- text processing: quote extraction + readable chunking ----------
+  var MAX_CHARS_PER_BLOCK = 220; // roughly "read comfortably in one go" — not a hard line-count cutoff
+
+  // Split text into sentences without changing any characters (Japanese-aware, no regex lookbehind for wider compatibility)
+  function splitIntoSentences(text){
+    var sentences = [];
+    var buf = "";
+    for(var i=0;i<text.length;i++){
+      var ch = text[i];
+      buf += ch;
+      if(ch==="。" || ch==="！" || ch==="？" || ch==="\n"){
+        sentences.push(buf);
+        buf = "";
+      }
+    }
+    if(buf) sentences.push(buf);
+    // clean up: trim each sentence but keep them non-empty
+    return sentences.map(function(s){ return s.trim(); }).filter(function(s){ return s.length>0; });
+  }
+
+  // Split raw narration text into readable blocks. Each sentence gets its own line
+  // (line breaks = 句点 boundaries); a new block starts once the current one has
+  // accumulated enough text to read comfortably — not a fixed line count.
+  // Content is preserved exactly; only line breaks between sentences are added.
+  function chunkNarration(text){
+    var sentences = splitIntoSentences(text);
+    if(sentences.length===0) return [];
+    var chunks = [];
+    var current = [];
+    var currentLen = 0;
+    sentences.forEach(function(s){
+      current.push(s);
+      currentLen += s.length;
+      if(currentLen >= MAX_CHARS_PER_BLOCK){
+        chunks.push(current.join("\n"));
+        current = [];
+        currentLen = 0;
+      }
+    });
+    if(current.length) chunks.push(current.join("\n"));
+    return chunks;
+  }
+
+  // A quote is only pulled out as its own NPC line when it stands alone as a full
+  // utterance: not chained back-to-back with another quote (「A」「B」) and not
+  // dropped in the middle of a flowing sentence (彼は「大丈夫」と言った。).
+  function isQuoteBoundaryChar(ch){
+    return ch===undefined || ch==="" || ch==="。" || ch==="！" || ch==="？" ||
+           ch==="\n" || ch===" " || ch==="　";
+  }
+
+  // Walk through text left-to-right, pulling out standalone 「...」 lines as NPC
+  // dialogue and turning the remaining narration into readable, line-broken chunks.
+  function buildBlocksFromRawText(raw){
+    var blocks = [];
+    var paragraphs = raw.split(/\n\s*\n+/).map(function(p){ return p.trim(); }).filter(Boolean);
+    if(paragraphs.length===0) paragraphs = [raw.trim()];
+
+    function flushNarration(text){
+      chunkNarration(text).forEach(function(c){
+        blocks.push({id:uid(), type:"text", speaker:"", title:"", text:c});
+      });
+    }
+
+    paragraphs.forEach(function(para){
+      // collapse internal artefact line breaks (from PDF layout) — no words are changed,
+      // we just rejoin lines that were only split by page/column wrapping.
+      var flat = para.replace(/\n+/g, "").trim();
+      var i = 0;
+      var buffer = ""; // narration accumulated so far, flushed whenever a standalone quote is found
+
+      while(i < flat.length){
+        var qStart = flat.indexOf("「", i);
+        if(qStart === -1){
+          buffer += flat.slice(i);
+          i = flat.length;
+          break;
+        }
+        var qEnd = flat.indexOf("」", qStart+1);
+        if(qEnd === -1){
+          // unmatched bracket — keep the rest as narration, don't lose any text
+          buffer += flat.slice(i);
+          i = flat.length;
+          break;
+        }
+
+        var charBefore = qStart > 0 ? flat[qStart-1] : undefined;
+        var charAfter = (qEnd+1 < flat.length) ? flat[qEnd+1] : undefined;
+        var isStandalone = isQuoteBoundaryChar(charBefore) && isQuoteBoundaryChar(charAfter);
+
+        if(isStandalone){
+          buffer += flat.slice(i, qStart);
+          if(buffer.trim()){ flushNarration(buffer); }
+          buffer = "";
+          var quote = flat.slice(qStart+1, qEnd).trim();
+          if(quote){ blocks.push({id:uid(), type:"npc", speaker:"", title:"", textColor:"", text:quote}); }
+        } else {
+          // chained quotes (「A」「B」) or a quote dropped mid-sentence — leave the
+          // brackets in place as ordinary narration text.
+          buffer += flat.slice(i, qEnd+1);
+        }
+        i = qEnd + 1;
+      }
+
+      if(buffer.trim()){ flushNarration(buffer); }
+    });
+
+    return blocks;
+  }
+
+  document.getElementById("goToEditorBtn").addEventListener("click", function(){
+    var activeTab = document.querySelector(".tab-btn.active").dataset.tab;
+    var raw = activeTab==="pdf" ? pdfExtracted : document.getElementById("pasteText").value;
+    if(!raw || !raw.trim()){
+      toast(activeTab==="pdf" ? "PDFの抽出結果がありません" : "テキストを入力してください");
+      return;
+    }
+    var title = document.getElementById("newDocTitle").value.trim() || "無題のシナリオ";
+    var blocks = buildBlocksFromRawText(raw);
+    if(blocks.length===0) blocks = [{id:uid(), type:"text", speaker:"", title:"", text:raw.trim()}];
+    var doc = {id: uid(), title: title, blocks: blocks};
+    documents.push(doc);
+    saveDocs();
+    openEditor(doc.id);
+    toast("「」の発言をNPC台詞として抜き出しました");
+  });
+
+  // ---------- EDITOR ----------
+  function getCurrentDoc(){
+    return documents.find(function(d){ return d.id===currentDocId; });
+  }
+
+  function openEditor(id){
+    currentDocId = id;
+    var doc = getCurrentDoc();
+    applyTheme(doc.theme);
+    document.getElementById("editDocTitle").value = doc.title;
+    document.getElementById("tocSearchInput").value = "";
+    renderThemeSwatches(doc.theme);
+    renderBlockEditor();
+    showScreen("editor");
+  }
+
+  // ---------- per-scenario NPC roster: remember names/colors used within this doc only ----------
+  function defaultNpcColor(doc){
+    if(doc.lastNpcColor) return doc.lastNpcColor;
+    if(doc.theme && doc.theme.ink) return doc.theme.ink;
+    return DEFAULT_TEXT_COLORS.npc;
+  }
+  function upsertNpcRoster(doc, name, color){
+    if(!name) return;
+    if(!doc.npcRoster) doc.npcRoster = [];
+    var entry = doc.npcRoster.find(function(r){ return r.name === name; });
+    if(entry){ entry.color = color; }
+    else { doc.npcRoster.push({name: name, color: color}); }
+  }
+  function syncNpcRosterFromBlocks(doc){
+    if(!doc.npcRoster) doc.npcRoster = [];
+    doc.blocks.forEach(function(b){
+      if(b.type==="npc" && b.speaker && b.speaker.trim()){
+        var name = b.speaker.trim();
+        var exists = doc.npcRoster.some(function(r){ return r.name===name; });
+        if(!exists){
+          doc.npcRoster.push({name: name, color: b.textColor || defaultNpcColor(doc)});
+        }
+      }
+    });
+  }
+
+  function renderBlockEditor(){
+    var doc = getCurrentDoc();
+    syncNpcRosterFromBlocks(doc);
+    var wrap = document.getElementById("blockList");
+    wrap.innerHTML = "";
+    doc.blocks.forEach(function(b, idx){
+      var card = document.createElement("div");
+      card.className = "block-editor";
+      card.id = "eb-" + b.id;
+      card.innerHTML =
+        '<input type="text" class="block-title-input" placeholder="タイトル（任意・目次で使えます）">' +
+        '<div class="type-row">' +
+          '<button class="type-btn" data-t="text">小段落</button>' +
+          '<button class="type-btn" data-t="heading">▌ 大段落</button>' +
+          '<button class="type-btn" data-t="kp">★ KP情報</button>' +
+          '<button class="type-btn" data-t="npc">「」台詞</button>' +
+          '<button class="type-btn" data-t="success">成功</button>' +
+          '<button class="type-btn" data-t="failure">失敗</button>' +
+          '<button class="type-btn" data-t="info">情報</button>' +
+          '<button class="type-btn" data-t="scene">シーン</button>' +
+          '<button class="type-btn" data-t="rpok">RPOK</button>' +
+        '</div>' +
+        '<div class="npc-name-row" style="display:none;">' +
+          '<input type="text" placeholder="NPCの名前（例：猫耳の少年）" class="npc-name-input">' +
+          '<div class="npc-roster-chips" style="display:none;"></div>' +
+        '</div>' +
+        '<div class="rpok-hint" style="display:none;">通常は中央に「RP」と表示され、タップすると「RPどうぞ」に切り替わります。目次には表示されません。</div>' +
+        '<div class="text-color-row">' +
+          '<label class="text-color-label">文字色<input type="color" class="text-color-input"></label>' +
+          '<span class="text-color-hint">背景は自動で同系色に</span>' +
+          '<button type="button" class="text-color-reset">既定色に戻す</button>' +
+        '</div>' +
+        '<textarea class="block-text"></textarea>' +
+        '<div class="row-actions"><button class="add-below">＋ この下に段落を追加</button><button class="del-block">削除</button></div>';
+
+      var titleInput = card.querySelector(".block-title-input");
+      var typeBtns = card.querySelectorAll(".type-btn");
+      var npcRow = card.querySelector(".npc-name-row");
+      var npcInput = card.querySelector(".npc-name-input");
+      var npcChipsWrap = card.querySelector(".npc-roster-chips");
+      var rpokHint = card.querySelector(".rpok-hint");
+      var colorRow = card.querySelector(".text-color-row");
+      var colorInput = card.querySelector(".text-color-input");
+      var colorReset = card.querySelector(".text-color-reset");
+      var textArea = card.querySelector(".block-text");
+      titleInput.value = b.title || "";
+      textArea.value = b.text;
+      npcInput.value = b.speaker || "";
+
+      function autoGrow(ta){
+        ta.style.height = "auto";
+        ta.style.height = (ta.scrollHeight + 2) + "px";
+      }
+      autoGrow(textArea);
+
+      function renderNpcChips(){
+        var roster = doc.npcRoster || [];
+        npcChipsWrap.innerHTML = "";
+        if(roster.length===0){ npcChipsWrap.style.display = "none"; return; }
+        npcChipsWrap.style.display = "flex";
+        roster.forEach(function(entry){
+          var chip = document.createElement("button");
+          chip.type = "button";
+          chip.className = "npc-chip";
+          chip.textContent = entry.name;
+          chip.style.borderColor = entry.color;
+          chip.style.color = entry.color;
+          if(entry.name === b.speaker){ chip.classList.add("sel"); chip.style.background = entry.color; }
+          chip.addEventListener("click", function(){
+            npcInput.value = entry.name;
+            b.speaker = entry.name;
+            b.textColor = entry.color;
+            colorInput.value = entry.color;
+            doc.lastNpcColor = entry.color;
+            saveDocs();
+            renderNpcChips();
+          });
+          npcChipsWrap.appendChild(chip);
+        });
+      }
+      renderNpcChips();
+
+      function getTypeDefaultColor(t){
+        if(t==="npc" && doc.lastNpcColor) return doc.lastNpcColor;
+        if(doc.theme){
+          if(t==="kp" && doc.theme.kpText) return doc.theme.kpText;
+          if(t==="npc" && doc.theme.ink) return doc.theme.ink;
+        }
+        return DEFAULT_TEXT_COLORS[t] || "#2b2620";
+      }
+      function setType(t){
+        var prevType = b.type;
+        b.type = t;
+        typeBtns.forEach(function(btn){ btn.classList.toggle("sel", btn.dataset.t===t); });
+        npcRow.style.display = (t==="npc") ? "block" : "none";
+        rpokHint.style.display = (t==="rpok") ? "block" : "none";
+        var isRpok = (t==="rpok");
+        colorRow.style.display = isRpok ? "none" : "flex";
+        titleInput.style.display = isRpok ? "none" : "block";
+        textArea.style.display = isRpok ? "none" : "block";
+        // switching a fresh block to NPC picks up the color last used for NPC lines
+        if(t==="npc" && prevType!=="npc" && !b.textColor && doc.lastNpcColor){
+          b.textColor = doc.lastNpcColor;
+        }
+        colorInput.value = b.textColor || getTypeDefaultColor(t);
+        if(t==="npc") renderNpcChips();
+      }
+      setType(b.type || "text");
+
+      typeBtns.forEach(function(btn){
+        btn.addEventListener("click", function(){ setType(btn.dataset.t); });
+      });
+      titleInput.addEventListener("input", function(){ b.title = titleInput.value; });
+      textArea.addEventListener("input", function(){ b.text = textArea.value; autoGrow(textArea); });
+      npcInput.addEventListener("input", function(){ b.speaker = npcInput.value; });
+      npcInput.addEventListener("blur", function(){
+        var name = npcInput.value.trim();
+        if(name){
+          upsertNpcRoster(doc, name, b.textColor || colorInput.value);
+          saveDocs();
+          renderNpcChips();
+        }
+      });
+      colorInput.addEventListener("input", function(){
+        b.textColor = colorInput.value;
+        if(b.type==="npc"){
+          doc.lastNpcColor = colorInput.value;
+          var name = (b.speaker||"").trim();
+          if(name){ upsertNpcRoster(doc, name, colorInput.value); renderNpcChips(); }
+        }
+      });
+      colorReset.addEventListener("click", function(){
+        b.textColor = "";
+        colorInput.value = getTypeDefaultColor(b.type);
+      });
+      card.querySelector(".del-block").addEventListener("click", function(){
+        doc.blocks.splice(idx,1);
+        renderBlockEditor();
+      });
+      card.querySelector(".add-below").addEventListener("click", function(){
+        var newBlock = {id:uid(), type:"text", speaker:"", title:"", textColor:"", text:""};
+        doc.blocks.splice(idx+1, 0, newBlock);
+        renderBlockEditor();
+        var el = document.getElementById("eb-"+newBlock.id);
+        if(el){
+          el.scrollIntoView({behavior:"smooth", block:"center"});
+          var ta = el.querySelector(".block-text");
+          if(ta) ta.focus();
+        }
+      });
+
+      wrap.appendChild(card);
+    });
+    renderToc();
+  }
+
+  document.getElementById("addBlockBtn").addEventListener("click", function(){
+    var doc = getCurrentDoc();
+    doc.blocks.push({id:uid(), type:"text", speaker:"", title:"", textColor:"", text:""});
+    renderBlockEditor();
+  });
+
+  document.getElementById("editDocTitle").addEventListener("input", function(e){
+    var doc = getCurrentDoc();
+    if(doc) doc.title = e.target.value;
+  });
+
+  document.getElementById("themeImageBtn").addEventListener("click", function(){
+    document.getElementById("themeImageInput").click();
+  });
+  document.getElementById("themeImageInput").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var doc = getCurrentDoc();
+    if(!doc) return;
+    toast("画像から配色を読み込み中…");
+    extractPaletteFromImageFile(file, function(theme, err){
+      if(err || !theme){ toast("配色の読み込みに失敗しました"); return; }
+      doc.theme = theme;
+      saveDocs();
+      applyTheme(theme);
+      renderThemeSwatches(theme);
+      toast("配色を反映しました");
+    });
+    e.target.value = "";
+  });
+  document.getElementById("themeResetBtn").addEventListener("click", function(){
+    var doc = getCurrentDoc();
+    if(!doc) return;
+    doc.theme = null;
+    saveDocs();
+    applyTheme(null);
+    renderThemeSwatches(null);
+    toast("既定の配色に戻しました");
+  });
+
+  function saveAndPreview(){
+    var doc = getCurrentDoc();
+    if(!doc) return;
+    doc.title = document.getElementById("editDocTitle").value.trim() || "無題のシナリオ";
+    doc.blocks = doc.blocks.filter(function(b){
+      return b.type==="rpok" || (b.text && b.text.trim()) || (b.title && b.title.trim());
+    });
+    saveDocs();
+    openViewer(doc.id);
+  }
+  document.getElementById("saveDocBtn").addEventListener("click", saveAndPreview);
+
+  // ---------- VIEWER ----------
+  function openViewer(id){
+    currentDocId = id;
+    var doc = getCurrentDoc();
+    applyTheme(doc.theme);
+    document.getElementById("viewTitle").textContent = doc.title;
+    document.getElementById("tocSearchInput").value = "";
+    var body = document.getElementById("viewBody");
+    body.innerHTML = "";
+
+    doc.blocks.forEach(function(b){
+      var wrap = document.createElement("div");
+      wrap.className = "block";
+      wrap.id = "vb-" + b.id;
+
+      var effectiveTitle = getBlockTitle(b);
+      if(effectiveTitle){
+        var titleLabel = document.createElement("div");
+        titleLabel.className = "block-title-label" + (b.type==="heading" ? " major-title" : "");
+        titleLabel.textContent = effectiveTitle;
+        wrap.appendChild(titleLabel);
+      }
+
+      var contentWrap = document.createElement("div");
+      var colorTarget = null; // element(s) to receive the derived text/background color
+
+      if(b.type==="kp"){
+        contentWrap.innerHTML = '<div class="b-kp"><div class="kp-tag"><span class="lock">★</span>KP情報（コピー不可）</div><div class="kp-text"></div></div>';
+        contentWrap.querySelector(".kp-text").textContent = b.text;
+        colorTarget = contentWrap.querySelector(".b-kp");
+      } else if(b.type==="npc"){
+        var nameHtml = b.speaker ? '<span class="npc-name"></span>' : "";
+        contentWrap.innerHTML = '<div class="b-npc">' + nameHtml + '<div class="npc-bubble"><span class="npc-tail"></span><span class="npc-bubble-text"></span></div></div>';
+        if(b.speaker) contentWrap.querySelector(".npc-name").textContent = b.speaker;
+        var bubble = contentWrap.querySelector(".npc-bubble");
+        contentWrap.querySelector(".npc-bubble-text").textContent = b.text;
+        bubble.addEventListener("click", function(){ copyText(b.text, bubble); });
+        colorTarget = bubble;
+      } else if(b.type==="success" || b.type==="failure" || b.type==="info" || b.type==="scene"){
+        contentWrap.innerHTML = '<div class="b-status ' + b.type + '"></div>';
+        var statusEl = contentWrap.querySelector(".b-status");
+        statusEl.textContent = b.text;
+        statusEl.addEventListener("click", function(){ copyText(b.text, statusEl); });
+        colorTarget = statusEl;
+      } else if(b.type==="rpok"){
+        contentWrap.innerHTML = '<div class="b-rpok"><span class="rpok-label">RP</span></div>';
+        var rpokEl = contentWrap.querySelector(".b-rpok");
+        var rpokLabel = contentWrap.querySelector(".rpok-label");
+        rpokEl.addEventListener("click", function(){
+          var revealed = rpokEl.classList.toggle("revealed");
+          rpokLabel.textContent = revealed ? "RPどうぞ" : "RP";
+        });
+      } else {
+        // 小段落 and 大段落 share the exact same content appearance —
+        // only the (optional) title above it differs in style.
+        contentWrap.innerHTML = '<div class="b-text"></div>';
+        var textEl = contentWrap.querySelector(".b-text");
+        textEl.textContent = b.text;
+        textEl.addEventListener("click", function(){ copyText(b.text, textEl); });
+        colorTarget = textEl;
+      }
+
+      if(colorTarget && b.textColor){
+        var bg = deriveBgFromTextColor(b.textColor);
+        colorTarget.style.color = b.textColor;
+        if(bg) colorTarget.style.backgroundColor = bg;
+        if(b.type==="kp"){
+          var kpTextEl = colorTarget.querySelector(".kp-text");
+          if(kpTextEl) kpTextEl.style.color = b.textColor;
+        }
+      }
+
+      while(contentWrap.firstChild) wrap.appendChild(contentWrap.firstChild);
+      body.appendChild(wrap);
+    });
+
+    showScreen("viewer");
+  }
+
+  // ---------- SYNC (silent, no password) ----------
+  async function initApp(){
+    var raw = await storageGet(STORAGE_KEY);
+    try{ documents = raw ? JSON.parse(raw) : []; }catch(e){ documents = []; }
+    renderHome();
+    showScreen("home");
+  }
+
+  // ---------- init ----------
+  initApp();
+})();
+</script>
+</body>
+</html>
