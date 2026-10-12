@@ -162,20 +162,38 @@
   .home-search-input:focus{outline:none; border-bottom-color:var(--ink-soft);}
 
   .home-list-head{
-    display:flex; align-items:baseline; justify-content:space-between;
+    display:flex; align-items:baseline; gap:10px;
     margin-bottom:4px; padding:0 2px;
   }
   .home-list-label{
     font-size:11px; font-weight:600; letter-spacing:.12em; color:var(--ink-soft); text-transform:uppercase;
   }
-  .home-list-count{font-size:11px; color:var(--ink-soft);}
+  .home-new-folder-btn{padding:4px; font-size:11px; text-decoration:none; color:var(--gold); font-weight:700;}
+  .home-list-count{font-size:11px; color:var(--ink-soft); margin-left:auto;}
 
   .empty-state{
     text-align:center; padding:60px 20px; color:var(--ink-soft); line-height:1.8;
   }
+
+  .folder-group{margin-top:10px;}
+  .folder-group-head{
+    display:flex; align-items:center; gap:8px; padding:12px 2px; cursor:pointer;
+    border-bottom:1px solid #ece4d3;
+  }
+  .folder-group-head .folder-toggle{
+    font-size:9px; color:var(--ink-soft); width:12px; flex-shrink:0;
+  }
+  .folder-group-head .folder-name{font-size:13px; font-weight:700; color:var(--ink); flex:1;}
+  .folder-group-head .folder-count{font-size:11px; color:var(--ink-soft);}
+  .folder-group-head .folder-del{
+    border:none; background:none; color:var(--ink-soft); font-size:15px; padding:4px 6px; cursor:pointer;
+  }
+  .folder-group-head .folder-del:active{color:var(--danger);}
+  .folder-group-body.collapsed{display:none;}
+
   .doc-card{
     background:none; border:none; border-bottom:1px solid #ece4d3; border-radius:0;
-    padding:18px 2px; margin-bottom:0; display:flex; align-items:center; gap:14px;
+    padding:18px 2px 18px 14px; margin-bottom:0; display:flex; align-items:center; gap:14px;
     box-shadow:none;
   }
   .doc-card .doc-main{flex:1; min-width:0;}
@@ -191,6 +209,7 @@
   }
   .btn-open{color:var(--gold); font-weight:700;}
   .btn-edit{color:var(--ink-soft);}
+  .btn-folder{color:var(--ink-soft); font-size:15px; padding:8px;}
   .btn-del{color:var(--ink-soft); font-size:16px; padding:8px; font-weight:400;}
   .btn-del:active{color:var(--danger);}
 
@@ -279,12 +298,18 @@
   .type-btn[data-t="rpok"].sel{background:var(--rpok-bg); color:var(--rpok-text); border-color:var(--rpok-border);}
   .block-editor .npc-name-row{margin-bottom:10px;}
   .npc-roster-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .npc-chip-item{display:inline-flex; align-items:center; gap:1px;}
   .npc-chip{
-    border:1.5px solid; border-radius:999px; background:#fff; padding:5px 12px;
+    border:1.5px solid; border-radius:999px 0 0 999px; background:#fff; padding:5px 10px 5px 12px;
     font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;
   }
   .npc-chip.sel{color:#fff !important;}
   .npc-chip:active{opacity:.75;}
+  .npc-chip-del{
+    border:none; background:#f0ead9; color:var(--ink-soft); font-size:13px; cursor:pointer;
+    padding:5px 9px; border-radius:0 999px 999px 0; line-height:1;
+  }
+  .npc-chip-del:active{color:var(--danger); background:#f3dfd9;}
   .text-color-row{display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
   .text-color-label{
     display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-soft); font-weight:600;
@@ -357,7 +382,18 @@
   .b-status.success{background:var(--success-bg); color:var(--success-text); border-left-color:var(--success-border);}
   .b-status.failure{background:var(--failure-bg); color:var(--failure-text); border-left-color:var(--failure-border);}
   .b-status.info{background:var(--info-bg); color:var(--info-text); border-left-color:var(--info-border);}
-  .b-status.scene{background:var(--scene-bg); color:var(--scene-text); border-left-color:var(--scene-border);}
+  .b-status.scene{
+    background:var(--scene-bg); color:var(--scene-text);
+    border:1.5px solid var(--scene-border); border-left-width:7px; border-radius:4px 12px 12px 4px;
+  }
+  .b-status .status-tag{
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:11.5px; font-weight:800; margin-bottom:6px; letter-spacing:.02em;
+  }
+  .b-status.scene .status-tag{color:var(--scene-border);}
+  .b-status.scene .status-text{font-weight:800;}
+  .b-status.success .status-tag{color:var(--success-border);}
+  .b-status.failure .status-tag{color:var(--failure-border);}
 
   .b-rpok{
     background:var(--rpok-bg); border:1px solid var(--rpok-border); border-radius:14px;
@@ -421,6 +457,20 @@
   }
   .confirm-cancel{background:#f0ead9; color:var(--ink);}
   .confirm-ok{background:var(--danger); color:#fff;}
+  .prompt-ok{background:var(--gold);}
+  .prompt-input{
+    width:100%; border:1px solid var(--gold-line); border-radius:10px; padding:12px;
+    font-size:15px; margin-bottom:16px; font-family:inherit; background:#fff; color:var(--ink);
+  }
+  .picker-box{max-width:300px;}
+  .picker-list{max-height:50vh; overflow-y:auto; margin-bottom:14px;}
+  .picker-item{
+    display:flex; align-items:center; gap:10px; width:100%; border:none; background:none;
+    padding:12px 8px; font-size:14.5px; color:var(--ink); cursor:pointer; border-radius:10px;
+    text-align:left;
+  }
+  .picker-item:active{background:#f2ecdc;}
+  .picker-item .picker-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0; background:var(--gold-line);}
 
   .theme-picker{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px;}
   .theme-btn{width:auto; flex:0 0 auto; padding:11px 16px; font-size:13px;}
@@ -470,6 +520,7 @@
 
       <div class="home-list-head">
         <span class="home-list-label">Saved</span>
+        <button class="link-btn home-new-folder-btn" id="newFolderBtn">＋ ファイルを作成</button>
         <span class="home-list-count" id="homeCount">0</span>
       </div>
 
@@ -562,6 +613,27 @@
       </div>
     </div>
   </div>
+
+  <div id="promptOverlay" class="confirm-overlay hidden">
+    <div class="confirm-box">
+      <p id="promptMessage"></p>
+      <input type="text" id="promptInput" class="prompt-input">
+      <div class="confirm-actions">
+        <button id="promptCancelBtn" class="confirm-cancel">キャンセル</button>
+        <button id="promptOkBtn" class="confirm-ok prompt-ok">作成する</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pickerOverlay" class="confirm-overlay hidden">
+    <div class="confirm-box picker-box">
+      <p id="pickerMessage"></p>
+      <div id="pickerList" class="picker-list"></div>
+      <div class="confirm-actions">
+        <button id="pickerCancelBtn" class="confirm-cancel" style="flex:1;">キャンセル</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -571,7 +643,9 @@
 
   // ---------- state ----------
   var STORAGE_KEY = "scenarioViewerDocs_v1";
+  var FOLDERS_KEY = "scenarioViewerFolders_v1";
   var documents = [];
+  var folders = []; // {id, name}
   var currentDocId = null;
   var pendingRawText = "";
   var pdfExtracted = "";
@@ -776,6 +850,9 @@
 
   function saveDocs(){
     storageSet(STORAGE_KEY, JSON.stringify(documents));
+  }
+  function saveFolders(){
+    storageSet(FOLDERS_KEY, JSON.stringify(folders));
   }
 
   // ---------- screen nav ----------
@@ -1038,6 +1115,72 @@
     cancelBtn.addEventListener("click", onCancel);
   }
 
+  // text-input modal (folder names etc.) — same reasoning as showConfirm: no native prompt()
+  function showPrompt(message, defaultValue, okLabel, onConfirm){
+    var overlay = document.getElementById("promptOverlay");
+    var msgEl = document.getElementById("promptMessage");
+    var input = document.getElementById("promptInput");
+    var okBtn = document.getElementById("promptOkBtn");
+    var cancelBtn = document.getElementById("promptCancelBtn");
+    msgEl.textContent = message;
+    okBtn.textContent = okLabel || "作成する";
+    input.value = defaultValue || "";
+    overlay.classList.remove("hidden");
+    input.focus();
+
+    function cleanup(){
+      overlay.classList.add("hidden");
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      input.removeEventListener("keydown", onKey);
+    }
+    function onOk(){
+      var val = input.value.trim();
+      if(!val) return;
+      cleanup();
+      onConfirm(val);
+    }
+    function onCancel(){ cleanup(); }
+    function onKey(e){ if(e.key === "Enter") onOk(); }
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    input.addEventListener("keydown", onKey);
+  }
+
+  // choice-list modal (folder picker)
+  function showPicker(message, items, onSelect){
+    var overlay = document.getElementById("pickerOverlay");
+    var msgEl = document.getElementById("pickerMessage");
+    var list = document.getElementById("pickerList");
+    var cancelBtn = document.getElementById("pickerCancelBtn");
+    msgEl.textContent = message;
+    list.innerHTML = "";
+    items.forEach(function(item){
+      var btn = document.createElement("button");
+      btn.className = "picker-item";
+      var dot = document.createElement("span");
+      dot.className = "picker-dot";
+      if(item.color) dot.style.background = item.color;
+      btn.appendChild(dot);
+      var label = document.createElement("span");
+      label.textContent = item.label;
+      btn.appendChild(label);
+      btn.addEventListener("click", function(){
+        cleanup();
+        onSelect(item.value);
+      });
+      list.appendChild(btn);
+    });
+    overlay.classList.remove("hidden");
+
+    function cleanup(){
+      overlay.classList.add("hidden");
+      cancelBtn.removeEventListener("click", onCancel);
+    }
+    function onCancel(){ cleanup(); }
+    cancelBtn.addEventListener("click", onCancel);
+  }
+
   function copyText(str, el){
     function done(ok){
       if(ok){
@@ -1067,6 +1210,44 @@
   }
 
   // ---------- HOME ----------
+  var foldersCollapsed = {}; // folder id -> true/false, kept for the session
+
+  function openFolderPicker(d){
+    var items = [{value: null, label: "未分類（フォルダなし）", color: null}];
+    folders.forEach(function(f){ items.push({value: f.id, label: f.name, color: "#b8862f"}); });
+    showPicker('「'+(d.title||"無題")+'」をどのファイルに入れますか？', items, function(folderId){
+      d.folderId = folderId || null;
+      saveDocs();
+      renderHome();
+    });
+  }
+
+  function makeDocCard(d){
+    var card = document.createElement("div");
+    card.className = "doc-card";
+    card.innerHTML =
+      '<div class="doc-main"><h3></h3><span class="doc-meta-pill"></span></div>' +
+      '<div class="doc-actions">' +
+        '<button class="btn-open">開く</button>' +
+        '<button class="btn-edit">編集</button>' +
+        '<button class="btn-folder">移動</button>' +
+        '<button class="btn-del">×</button>' +
+      '</div>';
+    card.querySelector("h3").textContent = d.title || "無題のシナリオ";
+    card.querySelector(".doc-meta-pill").textContent = (d.blocks?d.blocks.length:0) + "段落";
+    card.querySelector(".btn-open").onclick = function(){ openViewer(d.id); };
+    card.querySelector(".btn-edit").onclick = function(){ openEditor(d.id); };
+    card.querySelector(".btn-folder").onclick = function(){ openFolderPicker(d); };
+    card.querySelector(".btn-del").onclick = function(){
+      showConfirm('「'+(d.title||"無題")+'」を削除しますか？この操作は取り消せません。', "削除する", function(){
+        documents = documents.filter(function(x){return x.id!==d.id;});
+        saveDocs(); renderHome();
+        toast("削除しました");
+      });
+    };
+    return card;
+  }
+
   function renderHome(){
     var list = document.getElementById("docList");
     list.innerHTML = "";
@@ -1083,35 +1264,64 @@
       noMatch.textContent = "「" + query + "」に一致するシナリオがありません";
       list.appendChild(noMatch);
     } else {
-      var reversed = filtered.slice().reverse();
-      reversed.forEach(function(d, idx){
-        var card = document.createElement("div");
-        card.className = "doc-card";
-        card.innerHTML =
-          '<div class="doc-main"><h3></h3><span class="doc-meta-pill"></span></div>' +
-          '<div class="doc-actions">' +
-            '<button class="btn-open">開く</button>' +
-            '<button class="btn-edit">編集</button>' +
-            '<button class="btn-del">×</button>' +
-          '</div>';
-        card.querySelector("h3").textContent = d.title || "無題のシナリオ";
-        card.querySelector(".doc-meta-pill").textContent = (d.blocks?d.blocks.length:0) + "段落";
-        card.querySelector(".btn-open").onclick = function(){ openViewer(d.id); };
-        card.querySelector(".btn-edit").onclick = function(){ openEditor(d.id); };
-        card.querySelector(".btn-del").onclick = function(){
-          showConfirm('「'+(d.title||"無題")+'」を削除しますか？この操作は取り消せません。', "削除する", function(){
-            documents = documents.filter(function(x){return x.id!==d.id;});
-            saveDocs(); renderHome();
-            toast("削除しました");
+      var folderIds = folders.map(function(f){ return f.id; });
+      var unfiled = filtered.filter(function(d){ return !d.folderId || folderIds.indexOf(d.folderId)===-1; });
+
+      folders.forEach(function(f){
+        var docsInFolder = filtered.filter(function(d){ return d.folderId === f.id; });
+        if(query && docsInFolder.length===0) return; // hide empty folders while searching
+        var group = document.createElement("div");
+        group.className = "folder-group";
+
+        var head = document.createElement("div");
+        head.className = "folder-group-head";
+        var collapsed = !!foldersCollapsed[f.id];
+        head.innerHTML =
+          '<span class="folder-toggle">' + (collapsed ? "▶" : "▼") + '</span>' +
+          '<span class="folder-name"></span>' +
+          '<span class="folder-count"></span>' +
+          '<button class="folder-del" type="button">×</button>';
+        head.querySelector(".folder-name").textContent = f.name;
+        head.querySelector(".folder-count").textContent = docsInFolder.length;
+        group.appendChild(head);
+
+        var body = document.createElement("div");
+        body.className = "folder-group-body" + (collapsed ? " collapsed" : "");
+        docsInFolder.slice().reverse().forEach(function(d){ body.appendChild(makeDocCard(d)); });
+        group.appendChild(body);
+
+        head.addEventListener("click", function(e){
+          if(e.target.closest(".folder-del")) return;
+          foldersCollapsed[f.id] = !foldersCollapsed[f.id];
+          renderHome();
+        });
+        head.querySelector(".folder-del").addEventListener("click", function(){
+          showConfirm('「'+f.name+'」を削除しますか？中のシナリオは未分類に戻ります。', "削除する", function(){
+            folders = folders.filter(function(x){ return x.id!==f.id; });
+            documents.forEach(function(d){ if(d.folderId===f.id) d.folderId = null; });
+            saveFolders(); saveDocs(); renderHome();
+            toast("ファイルを削除しました");
           });
-        };
-        list.appendChild(card);
+        });
+
+        list.appendChild(group);
       });
+
+      unfiled.slice().reverse().forEach(function(d){ list.appendChild(makeDocCard(d)); });
     }
     document.getElementById("homeCount").textContent = documents.length;
   }
 
   document.getElementById("homeSearchInput").addEventListener("input", renderHome);
+
+  document.getElementById("newFolderBtn").addEventListener("click", function(){
+    showPrompt("新しいファイル名を入力してください", "", "作成する", function(name){
+      folders.push({id: uid(), name: name});
+      saveFolders();
+      renderHome();
+      toast("「" + name + "」を作成しました");
+    });
+  });
 
   document.getElementById("newDocBtn").addEventListener("click", function(){
     document.getElementById("newDocTitle").value = "";
@@ -1135,11 +1345,29 @@
     reader.onload = function(){
       try{
         var data = JSON.parse(reader.result);
-        var arr = Array.isArray(data) ? data : [data];
-        arr.forEach(function(d){
-          d.id = uid();
-          documents.push(d);
-        });
+        if(Array.isArray(data)){
+          // legacy export format: a bare array of documents, no folders
+          data.forEach(function(d){
+            d.id = uid();
+            d.folderId = null;
+            documents.push(d);
+          });
+        } else if(data && Array.isArray(data.documents)){
+          var idMap = {};
+          (data.folders || []).forEach(function(f){
+            var newId = uid();
+            idMap[f.id] = newId;
+            folders.push({id: newId, name: f.name});
+          });
+          data.documents.forEach(function(d){
+            d.id = uid();
+            d.folderId = (d.folderId && idMap[d.folderId]) ? idMap[d.folderId] : null;
+            documents.push(d);
+          });
+          saveFolders();
+        } else {
+          throw new Error("unrecognized format");
+        }
         saveDocs(); renderHome(); showScreen("home");
         toast("読み込みました");
       }catch(err){ toast("JSONの読み込みに失敗しました"); }
@@ -1150,7 +1378,7 @@
   document.getElementById("exportJsonBtn").addEventListener("click", function(){
     if(documents.length===0){ toast("書き出せるシナリオがありません"); return; }
     try{
-      var payload = JSON.stringify(documents, null, 2);
+      var payload = JSON.stringify({documents: documents, folders: folders}, null, 2);
       var blob = new Blob([payload], {type:"application/json"});
       var url = URL.createObjectURL(blob);
       var a = document.createElement("a");
@@ -1354,7 +1582,7 @@
     var title = document.getElementById("newDocTitle").value.trim() || "無題のシナリオ";
     var blocks = buildBlocksFromRawText(raw);
     if(blocks.length===0) blocks = [{id:uid(), type:"text", speaker:"", title:"", text:raw.trim()}];
-    var doc = {id: uid(), title: title, blocks: blocks};
+    var doc = {id: uid(), title: title, folderId: null, blocks: blocks};
     documents.push(doc);
     saveDocs();
     openEditor(doc.id);
@@ -1464,6 +1692,9 @@
         if(roster.length===0){ npcChipsWrap.style.display = "none"; return; }
         npcChipsWrap.style.display = "flex";
         roster.forEach(function(entry){
+          var item = document.createElement("span");
+          item.className = "npc-chip-item";
+
           var chip = document.createElement("button");
           chip.type = "button";
           chip.className = "npc-chip";
@@ -1480,7 +1711,22 @@
             saveDocs();
             renderNpcChips();
           });
-          npcChipsWrap.appendChild(chip);
+
+          var delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "npc-chip-del";
+          delBtn.textContent = "×";
+          delBtn.title = "候補から削除";
+          delBtn.addEventListener("click", function(ev){
+            ev.stopPropagation();
+            doc.npcRoster = (doc.npcRoster || []).filter(function(r){ return r.name !== entry.name; });
+            saveDocs();
+            renderNpcChips();
+          });
+
+          item.appendChild(chip);
+          item.appendChild(delBtn);
+          npcChipsWrap.appendChild(item);
         });
       }
       renderNpcChips();
@@ -1650,9 +1896,13 @@
         bubble.addEventListener("click", function(){ copyText(b.text, bubble); });
         colorTarget = bubble;
       } else if(b.type==="success" || b.type==="failure" || b.type==="info" || b.type==="scene"){
-        contentWrap.innerHTML = '<div class="b-status ' + b.type + '"></div>';
+        var statusLabels = {scene:"★シーン", success:"成功", failure:"失敗"};
+        var tagHtml = statusLabels[b.type]
+          ? '<div class="status-tag">' + statusLabels[b.type] + '</div>'
+          : '';
+        contentWrap.innerHTML = '<div class="b-status ' + b.type + '">' + tagHtml + '<div class="status-text"></div></div>';
         var statusEl = contentWrap.querySelector(".b-status");
-        statusEl.textContent = b.text;
+        contentWrap.querySelector(".status-text").textContent = b.text;
         statusEl.addEventListener("click", function(){ copyText(b.text, statusEl); });
         colorTarget = statusEl;
       } else if(b.type==="rpok"){
@@ -1694,6 +1944,8 @@
   async function initApp(){
     var raw = await storageGet(STORAGE_KEY);
     try{ documents = raw ? JSON.parse(raw) : []; }catch(e){ documents = []; }
+    var rawFolders = await storageGet(FOLDERS_KEY);
+    try{ folders = rawFolders ? JSON.parse(rawFolders) : []; }catch(e){ folders = []; }
     renderHome();
     showScreen("home");
   }
